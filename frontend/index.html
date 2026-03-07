@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dự Đoán Giá Bất Động Sản TP.HCM</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1>🏠 Dự Đoán Giá Bất Động Sản TP.HCM</h1>
+            <p>Click trên bản đồ để chọn vị trí &rarr; Nhập thông tin &rarr; Xem giá dự đoán</p>
+        </div>
+    </header>
+
+    <main class="container main-content">
+        <!-- Model Info -->
+        <section class="card model-info">
+            <h2>📊 Thông tin mô hình</h2>
+            <div class="metrics-grid">
+                <div class="metric">
+                    <span class="metric-value" id="metric-r2">—</span>
+                    <span class="metric-label">R² Score</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value" id="metric-mae">—</span>
+                    <span class="metric-label">MAE (tỷ VNĐ)</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value" id="metric-rmse">—</span>
+                    <span class="metric-label">RMSE (tỷ VNĐ)</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-value" id="metric-samples">—</span>
+                    <span class="metric-label">Số mẫu huấn luyện</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Map + Form -->
+        <div class="two-columns">
+            <!-- Map -->
+            <section class="card map-section">
+                <h2>📍 Chọn vị trí trên bản đồ</h2>
+                <p class="map-hint">Click vào bản đồ hoặc chọn quận từ danh sách bên dưới</p>
+                <div id="map"></div>
+                <div class="location-info" id="location-info">
+                    <span class="location-badge" id="location-badge">Chưa chọn vị trí</span>
+                    <span class="location-coords" id="location-coords"></span>
+                </div>
+                <!-- District quick select -->
+                <div class="district-select-wrap">
+                    <label for="district-select">Hoặc chọn quận:</label>
+                    <select id="district-select">
+                        <option value="">— Chọn quận/huyện —</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Form + Result -->
+            <section class="card form-section">
+                <h2>📝 Nhập thông tin bất động sản</h2>
+                <form id="predict-form">
+                    <div class="form-group">
+                        <label for="land_area">Diện tích đất (m²)</label>
+                        <input type="number" id="land_area" name="land_area" min="5" max="2000" step="0.1" placeholder="VD: 80" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="house_type">Loại bất động sản</label>
+                        <select id="house_type" name="house_type" required>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bedrooms">Số phòng ngủ</label>
+                        <input type="number" id="bedrooms" name="bedrooms" min="1" max="30" step="1" placeholder="VD: 3" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="toilets">Số WC</label>
+                        <input type="number" id="toilets" name="toilets" min="1" max="30" step="1" placeholder="VD: 2" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="total_floors">Số tầng</label>
+                        <input type="number" id="total_floors" name="total_floors" min="1" max="40" step="1" placeholder="VD: 3" required />
+                    </div>
+
+                    <!-- Hidden lat/lng -->
+                    <input type="hidden" id="lat" name="lat" />
+                    <input type="hidden" id="lng" name="lng" />
+
+                    <button type="submit" class="btn-predict" id="btn-predict">
+                        🔮 Dự đoán giá
+                    </button>
+                </form>
+
+                <!-- Result -->
+                <div id="result-area" class="result-area">
+                    <p class="result-placeholder">Chọn vị trí trên bản đồ → Nhập thông tin BĐS → Dự đoán</p>
+                </div>
+                <div class="result-summary" id="result-summary" style="display:none;">
+                    <div class="price-display">
+                        <span class="price-value" id="price-value">0</span>
+                        <span class="price-unit" id="price-unit">tỷ VNĐ</span>
+                    </div>
+                    <div class="input-summary" id="input-summary"></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Charts -->
+        <section class="card charts-section">
+            <h2>📈 Biểu đồ phân tích</h2>
+            <div class="charts-grid">
+                <div class="chart-item">
+                    <h3>Heatmap tương quan</h3>
+                    <img src="/api/charts/heatmap.png" alt="Heatmap" loading="lazy"/>
+                </div>
+                <div class="chart-item">
+                    <h3>Giá thực tế vs Dự đoán</h3>
+                    <img src="/api/charts/scatter.png" alt="Scatter plot" loading="lazy"/>
+                </div>
+                <div class="chart-item">
+                    <h3>Feature Importance</h3>
+                    <img src="/api/charts/feature_importance.png" alt="Feature Importance" loading="lazy"/>
+                </div>
+                <div class="chart-item chart-item-wide">
+                    <h3>Giá trung bình theo quận</h3>
+                    <img src="/api/charts/price_by_district.png" alt="Price by District" loading="lazy"/>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Dự Đoán Giá BĐS TP.HCM &mdash; RandomForestRegressor &bull; Pandas &bull; NumPy &bull; Scikit-learn &bull; Leaflet Map</p>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
