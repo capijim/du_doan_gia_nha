@@ -166,7 +166,8 @@
 
             resultArea.innerHTML = "";
             resultSummary.style.display = "block";
-            document.getElementById("price-value").textContent = data.gia_du_doan.toLocaleString("vi-VN");
+            var basePrice = data.gia_du_doan;
+            document.getElementById("price-value").textContent = basePrice.toLocaleString("vi-VN");
             document.getElementById("price-unit").textContent = data.don_vi;
 
             var summary = "";
@@ -179,10 +180,13 @@
             summary += "<strong>Số tầng:</strong> " + payload.total_floors + "<br/>";
             document.getElementById("input-summary").innerHTML = summary;
 
+            // Fetch nearby POIs and adjust price
+            fetchNearbyPois(selectedLat, selectedLng, basePrice, data.don_vi, data.district_label);
+
             if (marker) {
                 marker.bindPopup(
                     "<b>" + escapeHtml(data.district_label) + "</b><br/>" +
-                    "Giá dự đoán: <b>" + data.gia_du_doan.toLocaleString("vi-VN") + " " + escapeHtml(data.don_vi) + "</b>"
+                    "Giá dự đoán: <b>" + basePrice.toLocaleString("vi-VN") + " " + escapeHtml(data.don_vi) + "</b>"
                 ).openPopup();
             }
         } catch (err) {
@@ -197,6 +201,187 @@
         var div = document.createElement("div");
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;
+    }
+
+    // ── Quét tiện ích xung quanh (POI) ─────────────────
+    var poiMarkers = [];
+
+    async function fetchNearbyPois(lat, lng, basePrice, unit, districtLabel) {
+        var poiSection = document.getElementById("poi-section");
+        var poiLoading = document.getElementById("poi-loading");
+        var poiGrid = document.getElementById("poi-grid");
+        var poiBoost = document.getElementById("poi-boost");
+
+        poiSection.style.display = "block";
+        poiLoading.style.display = "flex";
+        poiGrid.innerHTML = "";
+        poiBoost.style.display = "none";
+
+        // Remove old POI markers from map
+        for (var k = 0; k < poiMarkers.length; k++) {
+            map.removeLayer(poiMarkers[k]);
+        }
+        poiMarkers = [];
+
+        try {
+            var res = await fetch(API_BASE + "/api/nearby-pois", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lat: lat, lng: lng, radius: 1000 }),
+            });
+            var data = await res.json();
+            poiLoading.style.display = "none";
+
+            document.getElementById("poi-radius").textContent = "(bán kính " + data.radius + "m)";
+
+            var cats = Object.keys(data.pois);
+            for (var i = 0; i < cats.length; i++) {
+                var cat = data.pois[cats[i]];
+                var card = document.createElement("div");
+                card.className = "poi-card" + (cat.count > 0 ? " has-items" : "");
+
+                var itemsHtml = "";
+                if (cat.items && cat.items.length) {
+                    for (var j = 0; j < cat.items.length; j++) {
+                        var it = cat.items[j];
+                        itemsHtml += '<div class="poi-item"><span>' + escapeHtml(it.name) + '</span><span class="poi-dist">' + it.distance_m + 'm</span></div>';
+                    }
+                } else {
+                    itemsHtml = '<div class="poi-empty">Không tìm thấy</div>';
+                }
+
+                card.innerHTML =
+                    '<div class="poi-card-header">' +
+                    '<span class="poi-icon">' + cat.icon + '</span>' +
+                    '<span class="poi-label">' + escapeHtml(cat.label) + '</span>' +
+                    '<span class="poi-count">' + cat.count + '</span>' +
+                    '</div>' +
+                    '<div class="poi-items">' + itemsHtml + '</div>' +
+                    (cat.boost_pct > 0 ? '<div class="poi-boost-tag">+' + cat.boost_pct + '%</div>' : '');
+
+                poiGrid.appendChild(card);
+
+                // Add markers on map for POI items
+                if (cat.items) {
+                    for (var m2 = 0; m2 < cat.items.length; m2++) {
+                        // No lat/lng from backend items, skip map markers for individual items
+                    }
+                }
+            }
+
+            // Show boost summary
+            if (data.total_boost_pct > 0) {
+                poiBoost.style.display = "block";
+                document.getElementById("boost-value").textContent = "+" + data.total_boost_pct + "%";
+                var adjusted = (basePrice * data.total_multiplier).toFixed(2);
+                document.getElementById("adjusted-price").textContent = parseFloat(adjusted).toLocaleString("vi-VN") + " " + unit;
+
+                // Update main price to adjusted
+                document.getElementById("price-value").textContent = parseFloat(adjusted).toLocaleString("vi-VN");
+                document.getElementById("price-unit").textContent = unit + " (đã điều chỉnh)";
+
+                if (marker) {
+                    marker.bindPopup(
+                        "<b>" + escapeHtml(districtLabel) + "</b><br/>" +
+                        "Giá gốc: <b>" + basePrice.toLocaleString("vi-VN") + " " + escapeHtml(unit) + "</b><br/>" +
+                        "Tiện ích: <b>+" + data.total_boost_pct + "%</b><br/>" +
+                        "Giá điều chỉnh: <b>" + parseFloat(adjusted).toLocaleString("vi-VN") + " " + escapeHtml(unit) + "</b>"
+                    ).openPopup();
+                }
+            } else {
+                poiBoost.style.display = "block";
+                document.getElementById("boost-value").textContent = "+0%";
+                document.getElementById("adjusted-price").textContent = basePrice.toLocaleString("vi-VN") + " " + unit;
+            }
+        } catch (e) {
+            poiLoading.style.display = "none";
+            poiGrid.innerHTML = '<div class="poi-empty">Không thể quét khu vực.</div>';
+        }
+    }
+
+    // ── Tìm kiếm địa chỉ (Nominatim) ────────────────────
+    var searchInput = document.getElementById("address-search");
+    var searchResults = document.getElementById("search-results");
+    var searchClear = document.getElementById("search-clear");
+    var searchTimer = null;
+
+    searchInput.addEventListener("input", function () {
+        clearTimeout(searchTimer);
+        var q = searchInput.value.trim();
+        searchClear.style.display = q ? "block" : "none";
+        if (q.length < 2) { searchResults.innerHTML = ""; searchResults.style.display = "none"; return; }
+        searchTimer = setTimeout(function () { searchAddress(q); }, 350);
+    });
+
+    searchInput.addEventListener("keydown", function (e) {
+        var items = searchResults.querySelectorAll("li");
+        var active = searchResults.querySelector("li.active");
+        var idx = Array.prototype.indexOf.call(items, active);
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            if (active) active.classList.remove("active");
+            idx = (idx + 1) % items.length;
+            items[idx].classList.add("active");
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            if (active) active.classList.remove("active");
+            idx = (idx - 1 + items.length) % items.length;
+            items[idx].classList.add("active");
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (active) active.click();
+            else if (items.length) items[0].click();
+        } else if (e.key === "Escape") {
+            searchResults.innerHTML = ""; searchResults.style.display = "none";
+        }
+    });
+
+    searchClear.addEventListener("click", function () {
+        searchInput.value = "";
+        searchResults.innerHTML = ""; searchResults.style.display = "none";
+        searchClear.style.display = "none";
+        searchInput.focus();
+    });
+
+    // Close results when clicking outside
+    document.addEventListener("click", function (e) {
+        if (!e.target.closest(".search-wrap")) {
+            searchResults.innerHTML = ""; searchResults.style.display = "none";
+        }
+    });
+
+    async function searchAddress(query) {
+        try {
+            var url = "https://nominatim.openstreetmap.org/search?" +
+                "format=json&q=" + encodeURIComponent(query + ", Hồ Chí Minh, Việt Nam") +
+                "&countrycodes=vn&limit=6&addressdetails=1&viewbox=106.35,10.95,107.02,10.35&bounded=1";
+            var res = await fetch(url, { headers: { "Accept-Language": "vi" } });
+            var data = await res.json();
+            renderSearchResults(data);
+        } catch (e) { /* silent */ }
+    }
+
+    function renderSearchResults(results) {
+        searchResults.innerHTML = "";
+        if (!results || !results.length) {
+            searchResults.innerHTML = '<li class="no-result">Không tìm thấy địa chỉ</li>';
+            searchResults.style.display = "block";
+            return;
+        }
+        for (var i = 0; i < results.length; i++) {
+            (function (r) {
+                var li = document.createElement("li");
+                li.innerHTML = '<span class="sr-name">' + escapeHtml(r.display_name.split(",").slice(0, 3).join(", ")) +
+                    '</span><span class="sr-detail">' + escapeHtml(r.display_name) + '</span>';
+                li.addEventListener("click", function () {
+                    setLocation(parseFloat(r.lat), parseFloat(r.lon));
+                    searchInput.value = r.display_name.split(",").slice(0, 3).join(", ");
+                    searchResults.innerHTML = ""; searchResults.style.display = "none";
+                });
+                searchResults.appendChild(li);
+            })(results[i]);
+        }
+        searchResults.style.display = "block";
     }
 
     // ── Init ────────────────────────────────────────────

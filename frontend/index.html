@@ -47,7 +47,16 @@
             <!-- Map -->
             <section class="card map-section">
                 <h2>📍 Chọn vị trí trên bản đồ</h2>
-                <p class="map-hint">Click vào bản đồ hoặc chọn quận từ danh sách bên dưới</p>
+                <p class="map-hint">Tìm địa chỉ, click bản đồ hoặc chọn quận bên dưới</p>
+                <!-- Search bar -->
+                <div class="search-wrap">
+                    <div class="search-input-wrap">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="address-search" placeholder="Tìm kiếm địa chỉ, tên đường, quận..." autocomplete="off" />
+                        <button type="button" id="search-clear" class="search-clear" title="Xóa">&times;</button>
+                    </div>
+                    <ul id="search-results" class="search-results"></ul>
+                </div>
                 <div id="map"></div>
                 <div class="location-info" id="location-info">
                     <span class="location-badge" id="location-badge">Chưa chọn vị trí</span>
@@ -107,6 +116,25 @@
                         <span class="price-unit" id="price-unit">tỷ VNĐ</span>
                     </div>
                     <div class="input-summary" id="input-summary"></div>
+                </div>
+
+                <!-- POI / Tiện ích xung quanh -->
+                <div id="poi-section" class="poi-section" style="display:none;">
+                    <h3>📍 Tiện ích xung quanh <span id="poi-radius"></span></h3>
+                    <div id="poi-loading" class="poi-loading" style="display:none;">
+                        <span class="spinner-sm"></span> Đang quét khu vực...
+                    </div>
+                    <div id="poi-grid" class="poi-grid"></div>
+                    <div id="poi-boost" class="poi-boost" style="display:none;">
+                        <div class="boost-row">
+                            <span>💰 Điều chỉnh viị trí:</span>
+                            <span class="boost-value" id="boost-value">+0%</span>
+                        </div>
+                        <div class="boost-row adjusted">
+                            <span>🏠 <strong>Giá sau điều chỉnh:</strong></span>
+                            <span class="adjusted-price" id="adjusted-price">0 tỷ VNĐ</span>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
