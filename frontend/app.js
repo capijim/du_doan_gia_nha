@@ -193,7 +193,11 @@
             resultArea.innerHTML = '<p class="error-msg">Không kết nối được server. Hãy đảm bảo backend đang chạy.</p>';
         } finally {
             btn.disabled = false;
-            btn.innerHTML = "🔮 Dự đoán giá";
+            btn.innerHTML =
+                '<span class="btn-icon" aria-hidden="true">' +
+                '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.3 4.7L19 9l-4.7 2.3L12 16l-2.3-4.7L5 9l4.7-2.3L12 2zm-6.5 12l1.4 2.8L9.7 18l-2.8 1.3L5.5 22l-1.4-2.7L1.3 18l2.8-1.2L5.5 14zm13 0l1.4 2.8 2.8 1.2-2.8 1.3L18.5 22l-1.4-2.7-2.8-1.3 2.8-1.2 1.4-2.8z"/></svg>' +
+                '</span>' +
+                '<span>Dự đoán giá</span>';
         }
     });
 
@@ -201,6 +205,17 @@
         var div = document.createElement("div");
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;
+    }
+
+    function getPoiIconSvg(catKey) {
+        var icons = {
+            hospital: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 3v3.2H6.3V9h3.2v3.2h2.8V9h3.2V6.2h-3.2V3H9.5zM5 13.5h14V21H5v-7.5zm2.4 2.1v3.3h9.2v-3.3H7.4z"/></svg>',
+            school: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9.5 4.8L12 12.6 2.5 7.8 12 3zm-6.8 7.3V15c0 2.8 3 5 6.8 5s6.8-2.2 6.8-5v-4.7L12 14 5.2 10.3z"/></svg>',
+            market: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.2l1.2-2.7h15.6L21 6.2v2.4a2.4 2.4 0 01-1.8 2.3V20H4.8v-9.1A2.4 2.4 0 013 8.6V6.2zm3.3 6.6V18h11.4v-5.2H6.3z"/></svg>',
+            park: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.1 3.4a4.2 4.2 0 00-4.2 4.2c0 1.3.6 2.5 1.5 3.3H6.1a3.6 3.6 0 100 7.2H11v2.9H9.2V22h5.6v-1.9H13v-2.9h4.8a3.6 3.6 0 100-7.2h-2.3A4.2 4.2 0 0011.1 3.4z"/></svg>',
+            transport: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3.5h12a2 2 0 012 2v9.7a2 2 0 01-2 2h-.8l1.4 2.3-1.7 1-2-3.3H9l-2 3.3-1.7-1L6.8 17.2H6a2 2 0 01-2-2V5.5a2 2 0 012-2zm0 2v5.2h12V5.5H6zm0 7.3v2.4h12v-2.4H6z"/></svg>'
+        };
+        return icons[catKey] || '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg>';
     }
 
     // ── Quét tiện ích xung quanh (POI) ─────────────────
@@ -236,7 +251,8 @@
 
             var cats = Object.keys(data.pois);
             for (var i = 0; i < cats.length; i++) {
-                var cat = data.pois[cats[i]];
+                var catKey = cats[i];
+                var cat = data.pois[catKey];
                 var card = document.createElement("div");
                 card.className = "poi-card" + (cat.count > 0 ? " has-items" : "");
 
@@ -252,7 +268,7 @@
 
                 card.innerHTML =
                     '<div class="poi-card-header">' +
-                    '<span class="poi-icon">' + cat.icon + '</span>' +
+                    '<span class="poi-icon" aria-hidden="true">' + getPoiIconSvg(catKey) + '</span>' +
                     '<span class="poi-label">' + escapeHtml(cat.label) + '</span>' +
                     '<span class="poi-count">' + cat.count + '</span>' +
                     '</div>' +
