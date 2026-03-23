@@ -5,23 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dự Đoán Giá Bất Động Sản TP.HCM</title>
     <link rel="stylesheet" href="style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="container">
-            <h1>🏠 Dự Đoán Giá Bất Động Sản TP.HCM</h1>
-            <p>Click trên bản đồ để chọn vị trí &rarr; Nhập thông tin &rarr; Xem giá dự đoán</p>
+    <!-- Hero section -->
+    <section class="hero-section" id="hero">
+        <div class="hero-content container">
+            <p class="hero-kicker">Đồ án học phần Công nghệ</p>
+            <h1>Dự Đoán Giá Bất Động Sản TP.HCM</h1>
+            <p>Ứng dụng bản đồ tương tác và Machine Learning để ước lượng giá nhà theo vị trí, loại hình và thông số công trình.</p>
+            <div class="hero-icons" aria-label="Điểm nổi bật của hệ thống">
+                <div class="hero-icon-item">
+                    <span class="hero-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 10.5L12 3l9 7.5"/>
+                            <path d="M5 9.5V21h14V9.5"/>
+                            <path d="M9 21v-6h6v6"/>
+                        </svg>
+                    </span>
+                    <span>Dữ liệu BĐS thực tế</span>
+                </div>
+                <div class="hero-icon-item">
+                    <span class="hero-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="8"/>
+                            <path d="M12 7v5l3 2"/>
+                        </svg>
+                    </span>
+                    <span>Dự đoán theo thời gian thực</span>
+                </div>
+                <div class="hero-icon-item">
+                    <span class="hero-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 21s7-5.2 7-11a7 7 0 10-14 0c0 5.8 7 11 7 11z"/>
+                            <circle cx="12" cy="10" r="2.5"/>
+                        </svg>
+                    </span>
+                    <span>Bản đồ và tiện ích xung quanh</span>
+                </div>
+            </div>
+            <a href="#predictor" class="hero-cta">Bắt đầu dự đoán</a>
         </div>
-    </header>
+    </section>
 
-    <main class="container main-content">
+    <main class="container main-content" id="predictor">
+        <!-- Intro card -->
+        <section class="card intro-card">
+            <p>Click trên bản đồ để chọn vị trí &rarr; Nhập thông tin &rarr; Xem giá dự đoán</p>
+        </section>
+
         <!-- Model Info -->
         <section class="card model-info">
-            <h2>📊 Thông tin mô hình</h2>
+            <h2 class="title-with-icon">
+                <span class="ui-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 19h16v1.8H2.2V3H4v16zm3-2.5h2.8V9H7v7.5zm5.1 0H15V5h-2.9v11.5zm5.1 0H20v-5.8h-2.8v5.8z"/></svg>
+                </span>
+                <span>Thông tin mô hình</span>
+            </h2>
             <div class="metrics-grid">
                 <div class="metric">
                     <span class="metric-value" id="metric-r2">—</span>
@@ -46,7 +88,12 @@
         <div class="two-columns">
             <!-- Map -->
             <section class="card map-section">
-                <h2>📍 Chọn vị trí trên bản đồ</h2>
+                <h2 class="title-with-icon">
+                    <span class="ui-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a6.5 6.5 0 00-6.5 6.5c0 4.7 6.5 12.5 6.5 12.5S18.5 13.7 18.5 9A6.5 6.5 0 0012 2.5zm0 9.1a2.6 2.6 0 110-5.2 2.6 2.6 0 010 5.2z"/></svg>
+                    </span>
+                    <span>Chọn vị trí trên bản đồ</span>
+                </h2>
                 <p class="map-hint">Tìm địa chỉ, click bản đồ hoặc chọn quận bên dưới</p>
                 <!-- Search bar -->
                 <div class="search-wrap">
@@ -71,9 +118,14 @@
                 </div>
             </section>
 
-            <!-- Form + Result -->
+            <!-- Form + Result -->  
             <section class="card form-section">
-                <h2>📝 Nhập thông tin bất động sản</h2>
+                <h2 class="title-with-icon">
+                    <span class="ui-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2.8h8.7L20.2 8v13.2H6V2.8zm8.2 1.7V8h3.4l-3.4-3.5zM8.5 11h9v1.7h-9V11zm0 3.7h9v1.7h-9v-1.7z"/></svg>
+                    </span>
+                    <span>Nhập thông tin bất động sản</span>
+                </h2>
                 <form id="predict-form">
                     <div class="form-group">
                         <label for="land_area">Diện tích đất (m²)</label>
@@ -102,7 +154,10 @@
                     <input type="hidden" id="lng" name="lng" />
 
                     <button type="submit" class="btn-predict" id="btn-predict">
-                        🔮 Dự đoán giá
+                        <span class="btn-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.3 4.7L19 9l-4.7 2.3L12 16l-2.3-4.7L5 9l4.7-2.3L12 2zm-6.5 12l1.4 2.8L9.7 18l-2.8 1.3L5.5 22l-1.4-2.7L1.3 18l2.8-1.2L5.5 14zm13 0l1.4 2.8 2.8 1.2-2.8 1.3L18.5 22l-1.4-2.7-2.8-1.3 2.8-1.2 1.4-2.8z"/></svg>
+                        </span>
+                        <span>Dự đoán giá</span>
                     </button>
                 </form>
 
@@ -120,18 +175,33 @@
 
                 <!-- POI / Tiện ích xung quanh -->
                 <div id="poi-section" class="poi-section" style="display:none;">
-                    <h3>📍 Tiện ích xung quanh <span id="poi-radius"></span></h3>
+                    <h3 class="title-with-icon title-with-icon-sm">
+                        <span class="ui-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5a6.5 6.5 0 00-6.5 6.5c0 4.7 6.5 12.5 6.5 12.5S18.5 13.7 18.5 9A6.5 6.5 0 0012 2.5zm0 9.1a2.6 2.6 0 110-5.2 2.6 2.6 0 010 5.2z"/></svg>
+                        </span>
+                        <span>Tiện ích xung quanh <span id="poi-radius"></span></span>
+                    </h3>
                     <div id="poi-loading" class="poi-loading" style="display:none;">
                         <span class="spinner-sm"></span> Đang quét khu vực...
                     </div>
                     <div id="poi-grid" class="poi-grid"></div>
                     <div id="poi-boost" class="poi-boost" style="display:none;">
                         <div class="boost-row">
-                            <span>💰 Điều chỉnh viị trí:</span>
+                            <span class="label-with-icon">
+                                <span class="ui-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c4.4 0 8 3.2 8 7.2 0 3.8-3.1 6.4-7.3 7.1v2.1h3.1V21h-7.6v-2.1h3V16.8c-4.2-.7-7.2-3.4-7.2-7.1 0-4 3.6-7.2 8-7.2zm0 1.9c-3.3 0-6 2.2-6 5.3 0 3.2 3 5.4 6 5.4s6-2.2 6-5.4c0-3.1-2.7-5.3-6-5.3z"/></svg>
+                                </span>
+                                <span>Điều chỉnh vị trí:</span>
+                            </span>
                             <span class="boost-value" id="boost-value">+0%</span>
                         </div>
                         <div class="boost-row adjusted">
-                            <span>🏠 <strong>Giá sau điều chỉnh:</strong></span>
+                            <span class="label-with-icon">
+                                <span class="ui-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10.5L12 3l9 7.5v10.7H14v-6h-4v6H3V10.5z"/></svg>
+                                </span>
+                                <strong>Giá sau điều chỉnh:</strong>
+                            </span>
                             <span class="adjusted-price" id="adjusted-price">0 tỷ VNĐ</span>
                         </div>
                     </div>
@@ -141,7 +211,12 @@
 
         <!-- Charts -->
         <section class="card charts-section">
-            <h2>📈 Biểu đồ phân tích</h2>
+            <h2 class="title-with-icon">
+                <span class="ui-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 19h16v1.8H2.2V3H4v16zm2.8-3.1l3.7-3.8 2.5 2.4 5.2-6 .8.8-6 7-2.5-2.4-3 3.1-1.7-1.1z"/></svg>
+                </span>
+                <span>Biểu đồ phân tích</span>
+            </h2>
             <div class="charts-grid">
                 <div class="chart-item">
                     <h3>Heatmap tương quan</h3>
