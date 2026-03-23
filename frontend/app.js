@@ -227,7 +227,7 @@
             var res = await fetch(API_BASE + "/api/nearby-pois", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ lat: lat, lng: lng, radius: 1000 }),
+                body: JSON.stringify({ lat: lat, lng: lng, radius: 1200 }),
             });
             var data = await res.json();
             poiLoading.style.display = "none";
@@ -264,7 +264,22 @@
                 // Add markers on map for POI items
                 if (cat.items) {
                     for (var m2 = 0; m2 < cat.items.length; m2++) {
-                        // No lat/lng from backend items, skip map markers for individual items
+                        var poi = cat.items[m2];
+                        if (typeof poi.lat === "number" && typeof poi.lng === "number") {
+                            var poiMarker = L.circleMarker([poi.lat, poi.lng], {
+                                radius: 5,
+                                color: "#ef4444",
+                                fillColor: "#fca5a5",
+                                fillOpacity: 0.85,
+                                weight: 1,
+                            }).addTo(map);
+                            poiMarker.bindPopup(
+                                "<b>" + escapeHtml(cat.label) + "</b><br/>" +
+                                escapeHtml(poi.name) + "<br/>" +
+                                "Khoảng cách: <b>" + poi.distance_m + "m</b>"
+                            );
+                            poiMarkers.push(poiMarker);
+                        }
                     }
                 }
             }

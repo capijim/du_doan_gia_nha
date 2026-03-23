@@ -127,40 +127,61 @@ def districts():
 # Các loại tiện ích và hệ số điều chỉnh giá (% tăng khi có trong bán kính)
 POI_CATEGORIES = {
     "hospital": {
-        "label": "Bệnh viện",
+        "label": "Bệnh viện / Y tế",
         "icon": "🏥",
-        "tags": '["amenity"="hospital"]',
         "boost_per_item": 0.015,   # +1.5% mỗi cơ sở, tối đa 3
         "max_count": 3,
     },
     "school": {
         "label": "Trường học",
         "icon": "🏫",
-        "tags": '["amenity"~"school|university|college"]',
         "boost_per_item": 0.012,
         "max_count": 3,
     },
     "market": {
         "label": "Chợ / Siêu thị",
         "icon": "🛒",
-        "tags": '["shop"~"supermarket|mall"]["name"],node["amenity"="marketplace"]',
         "boost_per_item": 0.010,
         "max_count": 3,
     },
     "park": {
         "label": "Công viên",
         "icon": "🌳",
-        "tags": '["leisure"="park"]',
         "boost_per_item": 0.008,
         "max_count": 2,
     },
     "transport": {
         "label": "Bến xe / Ga tàu",
         "icon": "🚉",
-        "tags": '["amenity"="bus_station"],node["railway"="station"]',
         "boost_per_item": 0.012,
         "max_count": 2,
     },
+}
+
+# Selector mở rộng để giảm bỏ sót POI thực tế ở VN.
+POI_SELECTORS = {
+    "hospital": [
+        '["amenity"~"hospital|clinic|doctors"]',
+        '["healthcare"~"hospital|clinic|doctor|centre"]',
+    ],
+    "school": [
+        '["amenity"~"school|university|college|kindergarten"]',
+        '["building"~"school|university|college"]',
+    ],
+    "market": [
+        '["amenity"="marketplace"]',
+        '["shop"~"supermarket|convenience|mall|department_store"]',
+        '["building"="retail"]',
+    ],
+    "park": [
+        '["leisure"="park"]',
+        '["landuse"="recreation_ground"]',
+    ],
+    "transport": [
+        '["amenity"="bus_station"]',
+        '["public_transport"~"station|stop_position|platform"]',
+        '["railway"~"station|halt"]',
+    ],
 }
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
@@ -175,6 +196,30 @@ def _haversine_m(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
+def _classify_poi(tags):
+    """Map tags -> category theo rule ưu tiên."""
+    amenity = tags.get("amenity", "")
+    healthcare = tags.get("healthcare", "")
+    building = tags.get("building", "")
+    shop = tags.get("shop", "")
+    leisure = tags.get("leisure", "")
+    landuse = tags.get("landuse", "")
+    railway = tags.get("railway", "")
+    public_transport = tags.get("public_transport", "")
+
+    if amenity in ("hospital", "clinic", "doctors") or healthcare in ("hospital", "clinic", "doctor", "centre"):
+        return "hospital"
+    if amenity in ("school", "university", "college", "kindergarten") or building in ("school", "university", "college"):
+        return "school"
+    if amenity == "marketplace" or shop in ("supermarket", "convenience", "mall", "department_store") or building == "retail":
+        return "market"
+    if leisure == "park" or landuse == "recreation_ground":
+        return "park"
+    if amenity == "bus_station" or railway in ("station", "halt") or public_transport in ("station", "stop_position", "platform"):
+        return "transport"
+    return None
+
+
 @app.route("/api/nearby-pois", methods=["POST"])
 def nearby_pois():
     """Tìm tiện ích xung quanh vị trí, trả về danh sách + hệ số điều chỉnh giá."""
@@ -185,42 +230,58 @@ def nearby_pois():
     except (KeyError, ValueError, TypeError):
         return jsonify({"error": "Cần lat và lng."}), 400
 
-    radius = min(int(data.get("radius", 1000)), 3000)  # mét, tối đa 3km
+    requested_radius = min(int(data.get("radius", 1200)), 3500)
+    radii = [requested_radius]
+    for fallback in (1800, 2500, 3200):
+        if fallback > requested_radius:
+            radii.append(fallback)
 
-    # Xây dựng Overpass query cho tất cả loại cùng lúc
-    parts = []
-    for cat_key, cat in POI_CATEGORIES.items():
-        for tag_block in cat["tags"].split("],"):
-            tag_block = tag_block.strip()
-            if not tag_block.endswith("]"):
-                tag_block += "]"
-            # Determine element type prefix
-            if tag_block.startswith("node"):
-                parts.append(f"{tag_block}(around:{radius},{lat},{lng});")
-            else:
-                parts.append(f"node{tag_block}(around:{radius},{lat},{lng});")
-                parts.append(f"way{tag_block}(around:{radius},{lat},{lng});")
-
-    query = f"[out:json][timeout:10];(" + "".join(parts) + ");out center tags 50;"
-
-    results = {}
-    total_boost = 0.0
-
-    try:
-        resp = http_requests.post(OVERPASS_URL, data={"data": query}, timeout=12)
-        resp.raise_for_status()
-        elements = resp.json().get("elements", [])
-    except Exception:
-        # Overpass không khả dụng → trả kết quả rỗng, không lỗi
+    def empty_result(current_radius):
+        empty = {}
         for cat_key, cat in POI_CATEGORIES.items():
-            results[cat_key] = {
+            empty[cat_key] = {
                 "label": cat["label"],
                 "icon": cat["icon"],
                 "count": 0,
                 "items": [],
                 "boost_pct": 0,
             }
-        return jsonify({"pois": results, "total_boost_pct": 0, "total_multiplier": 1.0, "radius": radius})
+        return {
+            "pois": empty,
+            "total_boost_pct": 0,
+            "total_multiplier": 1.0,
+            "radius": current_radius,
+        }
+
+    results = {}
+    total_boost = 0.0
+
+    # Tăng bán kính dần nếu thiếu dữ liệu để hạn chế miss POI gần khu dân cư.
+    elements = []
+    used_radius = requested_radius
+    for current_radius in radii:
+        parts = []
+        for selectors in POI_SELECTORS.values():
+            for selector in selectors:
+                parts.append(f"node{selector}(around:{current_radius},{lat},{lng});")
+                parts.append(f"way{selector}(around:{current_radius},{lat},{lng});")
+                parts.append(f"relation{selector}(around:{current_radius},{lat},{lng});")
+
+        query = f"[out:json][timeout:25];(" + "".join(parts) + ");out center tags;"
+        try:
+            resp = http_requests.post(OVERPASS_URL, data={"data": query}, timeout=30)
+            resp.raise_for_status()
+            elements = resp.json().get("elements", [])
+            used_radius = current_radius
+        except Exception:
+            continue
+
+        if len(elements) >= 20 or current_radius == radii[-1]:
+            break
+
+    if not elements:
+        # Overpass không khả dụng → trả kết quả rỗng, không lỗi
+        return jsonify(empty_result(used_radius))
 
     # Phân loại kết quả
     for cat_key, cat in POI_CATEGORIES.items():
@@ -232,6 +293,8 @@ def nearby_pois():
             "boost_pct": 0,
         }
 
+    # Chống trùng điểm từ node/way/relation theo tọa độ + tên.
+    seen = set()
     for el in elements:
         tags = el.get("tags", {})
         name = tags.get("name", "Không tên")
@@ -240,27 +303,23 @@ def nearby_pois():
         el_lng = el.get("lon") or (el.get("center", {}).get("lon"))
         if not el_lat or not el_lng:
             continue
+
+        signature = (round(float(el_lat), 5), round(float(el_lng), 5), name)
+        if signature in seen:
+            continue
+        seen.add(signature)
+
         dist_m = round(_haversine_m(lat, lng, el_lat, el_lng))
 
-        amenity = tags.get("amenity", "")
-        shop = tags.get("shop", "")
-        leisure = tags.get("leisure", "")
-        railway = tags.get("railway", "")
-
-        cat_key = None
-        if amenity == "hospital":
-            cat_key = "hospital"
-        elif amenity in ("school", "university", "college"):
-            cat_key = "school"
-        elif amenity in ("marketplace", "bus_station") or shop in ("supermarket", "mall"):
-            cat_key = "market" if shop or amenity == "marketplace" else "transport"
-        elif leisure == "park":
-            cat_key = "park"
-        elif railway == "station":
-            cat_key = "transport"
+        cat_key = _classify_poi(tags)
 
         if cat_key and results[cat_key]["count"] < POI_CATEGORIES[cat_key]["max_count"] * 3:
-            results[cat_key]["items"].append({"name": name, "distance_m": dist_m})
+            results[cat_key]["items"].append({
+                "name": name,
+                "distance_m": dist_m,
+                "lat": round(float(el_lat), 6),
+                "lng": round(float(el_lng), 6),
+            })
             results[cat_key]["count"] += 1
 
     # Sắp xếp theo khoảng cách và tính boost
@@ -281,7 +340,7 @@ def nearby_pois():
         "pois": results,
         "total_boost_pct": total_boost,
         "total_multiplier": multiplier,
-        "radius": radius,
+        "radius": used_radius,
     })
 
 
